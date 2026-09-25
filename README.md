@@ -40,6 +40,12 @@ Only public keys and an address go in here — nothing that lets someone log
 in. Still: private repo, reviewed pull requests. Who can merge into this
 repo decides who gets into your sessions.
 
+One copy of this repo is one relay with one join list: everyone in
+`team_authorized_keys` can join any session on that relay once they have
+its token. Fine for people who trust each other; a group that must be
+kept apart gets its own relay and its own copy (see pairing-setup's
+README, "One relay per group that trusts each other").
+
 ## In what order
 
 The full walkthrough is in [pairing-setup's README](https://github.com/johantre/pairing-setup#setup-in-four-steps);
