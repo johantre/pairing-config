@@ -1,0 +1,10 @@
+# Which host machines may START sessions on this team's relay.
+#
+# One public key per line, OpenSSH authorized_keys format: the "relay
+# login key" that pairing-setup's installer prints on each host, e.g.
+#   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... relay login key (pairing@jans-mac)
+#
+# Empty means nobody can host: the relay starts closed. Add hosts via a
+# pull request; whoever runs the relay then applies the list with
+#   ./deploy.sh <relay-host> --hosts-only
+# (that restarts the relay, which drops sessions in progress).

@@ -1,0 +1,9 @@
+# Who may JOIN this team's pairing sessions.
+#
+# One public key per line, OpenSSH authorized_keys format; the comment at
+# the end is free text, use it for "name@device":
+#   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... jan@macbook
+#
+# Participants add their own line via a pull request (see pairing-setup's
+# README, "Team keys"). Hosts pick up changes by pulling this repo and
+# re-running the pairing-setup installer.
