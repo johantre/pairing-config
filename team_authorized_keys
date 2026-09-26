@@ -4,6 +4,6 @@
 # the end is free text, use it for "name@device":
 #   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... jan@macbook
 #
-# Participants add their own line via a pull request (see pairing-setup's
-# README, "Team keys"). Hosts pick up changes by pulling this repo and
-# re-running the pairing-setup installer.
+# Participants get their line by running ./join (or .\join.ps1) once, and
+# add it via a pull request. Hosts pick up changes by pulling this repo and
+# re-running the pairing-setup installer. More: pairing-setup's docs/join.md.

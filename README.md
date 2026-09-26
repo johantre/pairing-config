@@ -44,8 +44,8 @@ repo decides who gets into your sessions.
 One copy of this repo is one relay with one join list: everyone in
 `team_authorized_keys` can join any session on that relay once they have
 its token. Fine for people who trust each other; a group that must be
-kept apart gets its own relay and its own copy (see pairing-setup's
-README, "One relay per group that trusts each other").
+kept apart gets its own relay and its own copy (see
+[One relay per group that trusts each other](https://github.com/johantre/pairing-setup/blob/main/docs/relay.md#one-relay-per-group-that-trusts-each-other)).
 
 ## Joining a session
 
@@ -62,16 +62,19 @@ Every run checks what's missing and skips what's already done, then
 connects with the right key, host and port. It only touches your own
 `~/.ssh`, and refuses a command that points to another relay than the one
 in `relay.conf`. More in
-[pairing-setup's README](https://github.com/johantre/pairing-setup#joining-as-a-participant).
+[What `join` does](https://github.com/johantre/pairing-setup/blob/main/docs/join.md).
 
 ## In what order
 
-The full walkthrough is in [pairing-setup's README](https://github.com/johantre/pairing-setup#setup-in-four-steps);
+The full walkthrough is in [pairing-setup's README](https://github.com/johantre/pairing-setup#1-set-up-for-your-team-once);
 in short:
 
 1. **Create your private copy** of this repo (above).
 2. **Set up the relay** and fill in `relay.conf`. The relay starts closed:
    `relay_authorized_hosts` is still empty, so nobody can host yet.
+   (Or, knowingly, use `upterm`'s public relay — see
+   [Using the public relay instead](https://github.com/johantre/pairing-setup/blob/main/docs/relay.md#using-the-public-relay-instead)
+   for the values; then `relay_authorized_hosts` isn't used.)
 3. **Install each host.** The installer prints the machine's relay login
    key; add it to `relay_authorized_hosts` in a pull request, after which
    the relay admin applies the list.
