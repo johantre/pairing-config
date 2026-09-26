@@ -35,6 +35,7 @@ tool repo.
 | [`relay.conf`](relay.conf) | whoever runs the relay, once | the relay's address and its SSH server key | which relay everyone uses, and how they recognise the real one |
 | [`relay_authorized_hosts`](relay_authorized_hosts) | each new host, via a pull request | the host machines' relay login keys | who may **start** sessions on the relay |
 | [`team_authorized_keys`](team_authorized_keys) | each participant, via a pull request | the participants' SSH public keys | who may **join** a session |
+| [`join`](join), [`join.ps1`](join.ps1) | — (ready to use) | the command participants join with | — |
 
 Only public keys and an address go in here — nothing that lets someone log
 in. Still: private repo, reviewed pull requests. Who can merge into this
@@ -45,6 +46,23 @@ One copy of this repo is one relay with one join list: everyone in
 its token. Fine for people who trust each other; a group that must be
 kept apart gets its own relay and its own copy (see pairing-setup's
 README, "One relay per group that trusts each other").
+
+## Joining a session
+
+Participants need nothing but a clone of your team's copy of this repo and
+an SSH client (built into macOS, Linux and Windows 10+). From its folder:
+
+| | macOS / Linux / WSL | Windows (PowerShell) |
+|---|---|---|
+| **First time** — create your key, pin the relay, show the line for your pull request | `./join` | `.\join.ps1` |
+| **Each session** — with the token the host shared | `./join <token>` | `.\join.ps1 <token>` |
+| **Or** paste the host's whole command | `./join "ssh <token>@<host> -p <port>"` | `.\join.ps1 "ssh <token>@<host> -p <port>"` |
+
+Every run checks what's missing and skips what's already done, then
+connects with the right key, host and port. It only touches your own
+`~/.ssh`, and refuses a command that points to another relay than the one
+in `relay.conf`. More in
+[pairing-setup's README](https://github.com/johantre/pairing-setup#joining-as-a-participant).
 
 ## In what order
 

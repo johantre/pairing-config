@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+#
+# Joins a pairing session on this team's relay (macOS, Linux, WSL).
+# On Windows without WSL, use join.ps1 instead.
+#
+# Usage:
+#   ./join                    set up only: key, relay pin, team-list check
+#   ./join <token>            set up what's missing, then join
+#   ./join "ssh <token>@<relay-host> -p <port>"
+#                             same, pasting the command the host shared
+#
+# Every run checks what's missing and skips what's already done. Nothing is
+# installed; it only touches your own ~/.ssh.
+set -euo pipefail
+set -f  # the pasted command is split into words below; never glob it
+
+say()  { printf '%s\n' "$*"; }
+warn() { printf '\033[33m%s\033[0m\n' "$*" >&2; }
+err()  { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+KEY="$HOME/.ssh/upterm_client_key"
+KNOWN_HOSTS="$HOME/.ssh/known_hosts"
+
+# --- the team's relay ---------------------------------------------------------
+eval "$(tr -d '\r' < "$DIR/relay.conf")"
+if [ -z "${RELAY_HOST:-}" ] || [ -z "${RELAY_PORT:-}" ] || [ -z "${RELAY_SERVER_KEY:-}" ]; then
+  err "relay.conf isn't filled in yet — ask whoever runs your relay."
+  exit 1
+fi
+# known_hosts writes port 22 as a bare host name, any other port as [host]:port.
+if [ "$RELAY_PORT" = 22 ]; then KH_NAME="$RELAY_HOST"; else KH_NAME="[$RELAY_HOST]:$RELAY_PORT"; fi
+
+# --- what to join: a bare token, or the pasted ssh command --------------------
+TOKEN=""
+if [ $# -gt 0 ]; then
+  # shellcheck disable=SC2048,SC2086  # deliberately re-split a quoted paste
+  set -- $*
+  prev=""
+  cmd_host="" cmd_port=""
+  for word in "$@"; do
+    case "$word" in
+      ssh) ;;
+      -p) ;;
+      *@*) TOKEN="${word%@*}"; cmd_host="${word#*@}" ;;
+      *)  if [ "$prev" = "-p" ]; then cmd_port="$word"; elif [ -z "$TOKEN" ]; then TOKEN="$word"; fi ;;
+    esac
+    prev="$word"
+  done
+  if [ -n "$cmd_host" ] && [ "$cmd_host" != "$RELAY_HOST" ]; then
+    err "That command points to $cmd_host, but your team's relay (relay.conf) is $RELAY_HOST."
+    err "Only join sessions on your own relay."
+    exit 1
+  fi
+  if [ -n "$cmd_port" ] && [ "$cmd_port" != "$RELAY_PORT" ]; then
+    err "That command uses port $cmd_port, but your team's relay (relay.conf) uses $RELAY_PORT."
+    exit 1
+  fi
+  if [ -z "$TOKEN" ]; then
+    err "Couldn't find a session token in: $*"
+    exit 1
+  fi
+fi
+
+# --- 1. your client key -------------------------------------------------------
+mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+if [ -f "$KEY" ]; then
+  say "✓ Client key: $KEY"
+else
+  ssh-keygen -t ed25519 -N "" -f "$KEY" -C "$(whoami)@$(hostname)" -q
+  say "✓ Created client key: $KEY"
+fi
+
+# --- 2. the relay's server key, pinned ------------------------------------------
+# Without it, the first connection is a blind yes/no prompt that looks the
+# same whether you reach the real relay or an impersonator.
+touch "$KNOWN_HOSTS"
+known="$(ssh-keygen -F "$KH_NAME" -f "$KNOWN_HOSTS" 2>/dev/null | grep -v '^#' | awk '{print $2" "$3}' || true)"
+if printf '%s\n' "$known" | grep -qxF "$RELAY_SERVER_KEY"; then
+  say "✓ Relay server key pinned for $KH_NAME"
+elif [ -n "$known" ]; then
+  err "Your known_hosts already has a DIFFERENT key for $KH_NAME than relay.conf."
+  err "Either the relay was redeployed with a new key (check with its admin, and pull"
+  err "pairing-config), or something is impersonating it. Once you know it's the"
+  err "former, remove the old entry and run this again:"
+  err "  ssh-keygen -R '$KH_NAME'"
+  exit 1
+else
+  printf '%s %s\n' "$KH_NAME" "$RELAY_SERVER_KEY" >> "$KNOWN_HOSTS"
+  say "✓ Pinned relay server key for $KH_NAME"
+fi
+
+# --- 3. are you on the team list? ---------------------------------------------
+# Going by this checkout of pairing-config; the host's installed copy is what
+# actually counts, so this is a hint, not a gate.
+if grep -qF "$(cut -d' ' -f2 "$KEY.pub")" "$DIR/team_authorized_keys"; then
+  say "✓ Your key is in team_authorized_keys"
+else
+  warn "Your key isn't in team_authorized_keys (in this checkout) yet."
+  warn "Add this line to team_authorized_keys in a pull request:"
+  say ""
+  say "  $(cat "$KEY.pub")"
+  say ""
+  warn "Already merged? Run 'git pull' here. Hosts need to pull and re-run their"
+  warn "installer too before their sessions let you in."
+fi
+
+[ -z "$TOKEN" ] && { say ""; say "Set up. To join a session: ./join <token>"; exit 0; }
+
+# --- 4. join ------------------------------------------------------------------
+say ""
+say "Joining session on $RELAY_HOST:$RELAY_PORT ..."
+# IdentitiesOnly: offer only the client key — an ssh-agent full of other keys
+# otherwise runs into "Too many authentication failures" first.
+set +e
+ssh -i "$KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -p "$RELAY_PORT" "$TOKEN@$RELAY_HOST"
+rc=$?
+set -e
+if [ "$rc" -eq 255 ]; then
+  say ""
+  warn "Couldn't join. If ssh said 'Permission denied (publickey)': your key isn't in"
+  warn "the host's installed team list yet (PR merged? host pulled and re-ran the"
+  warn "installer?), or the session has ended. Otherwise: is the token right, and"
+  warn "is the session still running?"
+fi
+exit "$rc"
